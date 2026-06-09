@@ -1,0 +1,32 @@
+{
+  auto_https off
+}
+
+:3456 {
+  # Basic auth - username: tito, password: toclaw2026
+  basicauth /* {
+    tito $2a$14$AcPYYwZOUDdJEgBVMcIbwe50XjfTKoj4D5KIVBiuT1viT8FqxygjO
+  }
+
+  # Serve webchat static files
+  root * /home/openclaw/openclaw-webchat/dist
+
+  # WebSocket proxy to OpenClaw gateway
+  @websocket {
+    header Connection *Upgrade*
+    header Upgrade websocket
+  }
+  reverse_proxy @websocket localhost:18789 {
+    header_up Host {host}
+    header_up Connection Upgrade
+    header_up Upgrade websocket
+  }
+
+  # Fallback to static files
+  file_server
+
+  # Log
+  log {
+    output file /home/openclaw/openclaw-webchat/caddy.log
+  }
+}

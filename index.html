@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小头虾 · ToClaw Chat</title>
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Login Screen -->
+    <div id="login-screen" class="screen active">
+      <div class="login-card">
+        <div class="logo">🐺</div>
+        <h1>小头虾</h1>
+        <p class="subtitle">ToClaw · 头头的 AI 朋友</p>
+        <div class="input-group">
+          <label for="user-id">你的 ID</label>
+          <input type="text" id="user-id" placeholder="输入你的 Telegram ID 或自定义 ID" autocomplete="off">
+          <p class="hint">如果你的 Telegram ID 和头头的朋友列表匹配，会自动合并对话</p>
+        </div>
+        <button id="login-btn" onclick="doLogin()">开始聊天</button>
+      </div>
+    </div>
+
+    <!-- Chat Screen -->
+    <div id="chat-screen" class="screen">
+      <div class="chat-header">
+        <div class="header-left">
+          <span class="avatar">🐺</span>
+          <div>
+            <h2>小头虾</h2>
+            <span id="connection-status" class="status">连接中...</span>
+          </div>
+        </div>
+        <div class="header-right">
+          <button class="icon-btn" onclick="exportChat()" title="导出对话">📥</button>
+          <button class="icon-btn" onclick="doLogout()" title="退出">🚪</button>
+        </div>
+      </div>
+      <div id="messages" class="messages"></div>
+      <div class="input-area">
+        <textarea id="message-input" placeholder="说点什么..." rows="1" onkeydown="handleKey(event)"></textarea>
+        <button id="send-btn" onclick="sendMessage()">➤</button>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
