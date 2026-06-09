@@ -1,50 +1,75 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="scrollbar-none">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>小头虾 · ToClaw Chat</title>
+  <meta name="description" content="ToClaw 私有 WebChat，头头的 AI 朋友">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/src/style.css">
 </head>
-<body>
-  <div id="app">
+<body class="app-body">
+  <div class="app-shell">
     <!-- Login Screen -->
     <div id="login-screen" class="screen active">
-      <div class="login-card">
-        <div class="logo">🐺</div>
-        <h1>小头虾</h1>
-        <p class="subtitle">ToClaw · 头头的 AI 朋友</p>
-        <div class="input-group">
-          <label for="user-id">你的 ID</label>
-          <input type="text" id="user-id" placeholder="输入你的 Telegram ID 或自定义 ID" autocomplete="off">
-          <p class="hint">如果你的 Telegram ID 和头头的朋友列表匹配，会自动合并对话</p>
+      <div class="login-hero">
+        <div class="login-art">
+          <div class="login-avatar">🐺</div>
         </div>
-        <button id="login-btn" onclick="doLogin()">开始聊天</button>
+        <div class="login-copy">
+          <h1 class="login-title">路上辛苦了<br>来聊点什么？</h1>
+          <div class="login-body">
+            <p>我是小头虾，ToClaw，头头的 AI 朋友。</p>
+            <p>输入你的 ID 开始对话。如果你是头头的朋友，我会认出你来。</p>
+          </div>
+          <div class="login-form">
+            <input type="text" id="user-id" placeholder="你的 Telegram ID 或昵称" autocomplete="off">
+            <button id="login-btn" class="ui-pressable" onclick="doLogin()">开始聊天</button>
+          </div>
+          <p class="login-hint">输入 Telegram ID 可自动合并对话记录</p>
+        </div>
       </div>
     </div>
 
     <!-- Chat Screen -->
     <div id="chat-screen" class="screen">
-      <div class="chat-header">
+      <header class="chat-header">
         <div class="header-left">
-          <span class="avatar">🐺</span>
-          <div>
-            <h2>小头虾</h2>
-            <span id="connection-status" class="status">连接中...</span>
-          </div>
+          <a href="#" class="site-brand" onclick="doLogout(); return false;">
+            <span class="brand-icon">🐺</span>
+            <span class="brand-text">小头虾</span>
+          </a>
         </div>
         <div class="header-right">
-          <button class="icon-btn" onclick="exportChat()" title="导出对话">📥</button>
-          <button class="icon-btn" onclick="doLogout()" title="退出">🚪</button>
+          <span id="connection-status" class="status-dot"></span>
+          <button class="ui-pressable header-icon-btn" onclick="exportChat()" title="导出对话">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          <button class="ui-pressable header-icon-btn" onclick="doLogout()" title="退出">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
         </div>
-      </div>
+      </header>
+
       <div id="messages" class="messages"></div>
-      <div class="input-area">
-        <textarea id="message-input" placeholder="说点什么..." rows="1" onkeydown="handleKey(event)"></textarea>
-        <button id="send-btn" onclick="sendMessage()">➤</button>
-      </div>
+
+      <footer class="input-area">
+        <div class="input-wrapper">
+          <textarea id="message-input" placeholder="说点什么..." rows="1" onkeydown="handleKey(event)"></textarea>
+          <button id="send-btn" class="ui-pressable" onclick="sendMessage()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </div>
+      </footer>
     </div>
   </div>
+
+  <footer class="site-footer">
+    <p class="site-footer__tagline">make 21 grams interesting.</p>
+    <p class="site-footer__copyright">&copy; 2026 头头咖啡屋 / Tito's Cafe. 小头虾 ToClaw WebChat.</p>
+  </footer>
+
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>

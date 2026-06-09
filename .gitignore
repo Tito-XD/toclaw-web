@@ -3,3 +3,6 @@ dist/
 *.log
 .env
 caddy.log
+
+# Local Netlify folder
+.netlify
