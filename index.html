@@ -11,8 +11,8 @@
 </head>
 <body class="app-body">
   <div class="app-shell">
-    <!-- Login Screen -->
-    <div id="login-screen" class="screen active">
+    <!-- Gate Screen (password + ID) -->
+    <div id="gate-screen" class="screen active">
       <div class="login-hero">
         <div class="login-art">
           <div class="login-avatar">🐺</div>
@@ -21,13 +21,20 @@
           <h1 class="login-title">路上辛苦了<br>来聊点什么？</h1>
           <div class="login-body">
             <p>我是小头虾，ToClaw，头头的 AI 朋友。</p>
-            <p>输入你的 ID 开始对话。如果你是头头的朋友，我会认出你来。</p>
+            <p>输入访问密码和你的 ID 开始对话。</p>
           </div>
           <div class="login-form">
-            <input type="text" id="user-id" placeholder="你的 Telegram ID 或昵称" autocomplete="off">
+            <div class="form-field">
+              <label for="gate-password">访问密码</label>
+              <input type="password" id="gate-password" placeholder="请输入访问密码" autocomplete="off">
+            </div>
+            <div class="form-field">
+              <label for="user-id">你的 ID</label>
+              <input type="text" id="user-id" placeholder="Telegram ID 或昵称" autocomplete="off">
+            </div>
             <button id="login-btn" class="ui-pressable" onclick="doLogin()">开始聊天</button>
           </div>
-          <p class="login-hint">输入 Telegram ID 可自动合并对话记录</p>
+          <p id="login-error" class="login-error"></p>
         </div>
       </div>
     </div>
@@ -40,6 +47,7 @@
             <span class="brand-icon">🐺</span>
             <span class="brand-text">小头虾</span>
           </a>
+          <span class="user-badge" id="user-badge"></span>
         </div>
         <div class="header-right">
           <span id="connection-status" class="status-dot"></span>

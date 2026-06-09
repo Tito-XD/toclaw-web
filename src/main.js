@@ -1,6 +1,6 @@
-// Config - connect to same origin (Caddy proxies WebSocket to gateway)
+// Config
 const GATEWAY_URL = 'wss://chat.tito.cafe';
-const GATEWAY_TOKEN = 'e682960566d9436ba84bc65cb158708c561b66f6d52a4c6d9f542ae116ecfc5c'; // Token stays server-side in Caddy config
+const GATEWAY_TOKEN = 'e682960566d9436ba84bc65cb158708c561b66f6d52a4c6d9f542ae116ecfc5c';
 
 let ws = null;
 let requestId = 0;
@@ -10,32 +10,52 @@ let userId = null;
 let connected = false;
 let messageHistory = [];
 
-// --- Login ---
+// --- Gate Auth ---
 function doLogin() {
-  const input = document.getElementById('user-id').value.trim();
-  if (!input) { alert('请输入 ID'); return; }
-  userId = input;
+  const password = document.getElementById('gate-password').value;
+  const id = document.getElementById('user-id').value.trim();
+  const errorEl = document.getElementById('login-error');
+
+  if (!password) { errorEl.textContent = '请输入访问密码'; return; }
+  if (!id) { errorEl.textContent = '请输入你的 ID'; return; }
+
+  if (password !== 'toclaw2026') {
+    errorEl.textContent = '密码错误';
+    return;
+  }
+
+  errorEl.textContent = '';
+  userId = id;
   localStorage.setItem('toclaw_user_id', userId);
-  document.getElementById('login-screen').classList.remove('active');
+  localStorage.setItem('toclaw_auth', '1');
+  document.getElementById('gate-screen').classList.remove('active');
   document.getElementById('chat-screen').classList.add('active');
+  document.getElementById('user-badge').textContent = userId;
   connectGateway();
 }
 
 function doLogout() {
   localStorage.removeItem('toclaw_user_id');
+  localStorage.removeItem('toclaw_auth');
   if (ws) ws.close();
   document.getElementById('chat-screen').classList.remove('active');
-  document.getElementById('login-screen').classList.add('active');
+  document.getElementById('gate-screen').classList.add('active');
   document.getElementById('messages').innerHTML = '';
+  document.getElementById('gate-password').value = '';
   connected = false;
 }
 
-// Auto-login
+// Auto-login if authenticated
 window.addEventListener('DOMContentLoaded', () => {
-  const saved = localStorage.getItem('toclaw_user_id');
-  if (saved) {
-    document.getElementById('user-id').value = saved;
-    doLogin();
+  const savedAuth = localStorage.getItem('toclaw_auth');
+  const savedId = localStorage.getItem('toclaw_user_id');
+  if (savedAuth === '1' && savedId) {
+    userId = savedId;
+    document.getElementById('user-id').value = savedId;
+    document.getElementById('gate-screen').classList.remove('active');
+    document.getElementById('chat-screen').classList.add('active');
+    document.getElementById('user-badge').textContent = userId;
+    connectGateway();
   }
 });
 
@@ -44,9 +64,7 @@ function connectGateway() {
   setStatus('连接中...', '');
   ws = new WebSocket(GATEWAY_URL);
 
-  ws.onopen = () => {
-    console.log('WebSocket connected');
-  };
+  ws.onopen = () => { console.log('WebSocket connected'); };
 
   ws.onmessage = (event) => {
     try {
@@ -60,7 +78,6 @@ function connectGateway() {
   ws.onclose = () => {
     connected = false;
     setStatus('连接断开', 'error');
-    // Auto-reconnect after 3s
     setTimeout(() => {
       if (document.getElementById('chat-screen').classList.contains('active')) {
         connectGateway();
@@ -75,35 +92,28 @@ function connectGateway() {
 }
 
 function handleFrame(frame) {
-  // Server sends connect.challenge first
   if (frame.type === 'event' && frame.event === 'connect.challenge') {
     sendConnect(frame.payload);
     return;
   }
 
-  // Response to our connect request
   if (frame.type === 'res' && frame.ok && frame.payload?.type === 'hello-ok') {
     connected = true;
     setStatus('已连接', 'connected');
-    // Subscribe to session events
     subscribeSessions();
-    // Send initial greeting
     setTimeout(() => {
       addMessage('system', `欢迎 ${userId}！你现在可以和小头虾聊天了 🐺`);
-      // Try to find existing session or create new one
       findOrCreateSession();
     }, 500);
     return;
   }
 
-  // Response to our requests
   if (frame.type === 'res' && frame.id && pendingRequests[frame.id]) {
     pendingRequests[frame.id](frame);
     delete pendingRequests[frame.id];
     return;
   }
 
-  // Chat/agent events (streamed responses)
   if (frame.type === 'event') {
     handleChatEvent(frame);
   }
@@ -117,17 +127,10 @@ function sendConnect(challenge) {
     params: {
       minProtocol: 3,
       maxProtocol: 4,
-      client: {
-        id: 'webchat',
-        version: '1.0.0',
-        platform: 'web',
-        mode: 'operator'
-      },
+      client: { id: 'webchat', version: '1.0.0', platform: 'web', mode: 'operator' },
       role: 'operator',
       scopes: ['operator.read', 'operator.write'],
-      caps: [],
-      commands: [],
-      permissions: {},
+      caps: [], commands: [], permissions: {},
       auth: { token: GATEWAY_TOKEN },
       locale: 'zh-CN',
       userAgent: 'toclaw-webchat/1.0.0'
@@ -137,29 +140,16 @@ function sendConnect(challenge) {
 }
 
 function subscribeSessions() {
-  wsSend({
-    type: 'req',
-    id: genId(),
-    method: 'sessions.subscribe',
-    params: {}
-  });
+  wsSend({ type: 'req', id: genId(), method: 'sessions.subscribe', params: {} });
 }
 
 function findOrCreateSession() {
-  // List sessions to find one for this user
-  wsSend({
-    type: 'req',
-    id: genId(),
-    method: 'sessions.list',
-    params: {}
-  }, (res) => {
+  wsSend({ type: 'req', id: genId(), method: 'sessions.list', params: {} }, (res) => {
     if (res.ok && res.payload) {
       const sessions = res.payload;
-      // Find the main session or any session linked to this user
       const mainSession = Object.keys(sessions).find(k => k.includes('main'));
       if (mainSession) {
         currentSessionKey = mainSession;
-        // Load recent messages
         loadRecentMessages();
       }
     }
@@ -168,20 +158,12 @@ function findOrCreateSession() {
 
 function loadRecentMessages() {
   if (!currentSessionKey) return;
-  wsSend({
-    type: 'req',
-    id: genId(),
-    method: 'sessions.preview',
-    params: { sessionKey: currentSessionKey }
-  }, (res) => {
+  wsSend({ type: 'req', id: genId(), method: 'sessions.preview', params: { sessionKey: currentSessionKey } }, (res) => {
     if (res.ok && res.payload?.messages) {
       const msgs = res.payload.messages.slice(-20);
       msgs.forEach(m => {
-        if (m.role === 'user') {
-          addMessage('user', m.content, m.timestamp);
-        } else if (m.role === 'assistant') {
-          addMessage('bot', m.content, m.timestamp);
-        }
+        if (m.role === 'user') addMessage('user', m.content, m.timestamp);
+        else if (m.role === 'assistant') addMessage('bot', m.content, m.timestamp);
       });
     }
   });
@@ -197,27 +179,13 @@ function sendMessage() {
   input.style.height = 'auto';
   addMessage('user', text);
 
-  // Show typing indicator
   const typingEl = addTyping();
 
-  // Send via chat.send
-  wsSend({
-    type: 'req',
-    id: genId(),
-    method: 'chat.send',
-    params: {
-      text: text,
-      sessionKey: currentSessionKey || undefined
-    }
-  }, (res) => {
-    // Remove typing indicator
+  wsSend({ type: 'req', id: genId(), method: 'chat.send', params: { text, sessionKey: currentSessionKey || undefined } }, (res) => {
     if (typingEl) typingEl.remove();
-    
-    if (res.ok) {
-      if (res.payload?.sessionKey) {
-        currentSessionKey = res.payload.sessionKey;
-      }
-    } else {
+    if (res.ok && res.payload?.sessionKey) {
+      currentSessionKey = res.payload.sessionKey;
+    } else if (!res.ok) {
       addMessage('system', '发送失败: ' + (res.error?.message || '未知错误'));
     }
   });
@@ -227,20 +195,9 @@ function handleChatEvent(frame) {
   const event = frame.event;
   const payload = frame.payload;
 
-  // Streamed agent response
-  if (event === 'agent' && payload?.text) {
-    updateBotMessage(payload.text);
-  }
-
-  // Chat message completed
-  if (event === 'chat.message' && payload?.role === 'assistant') {
-    finalizeBotMessage(payload.content || payload.text);
-  }
-
-  // Session events
-  if (event === 'session.updated' && payload?.sessionKey) {
-    currentSessionKey = payload.sessionKey;
-  }
+  if (event === 'agent' && payload?.text) updateBotMessage(payload.text);
+  if (event === 'chat.message' && payload?.role === 'assistant') finalizeBotMessage(payload.content || payload.text);
+  if (event === 'session.updated' && payload?.sessionKey) currentSessionKey = payload.sessionKey;
 }
 
 let currentBotMessage = null;
@@ -248,21 +205,15 @@ let botMessageText = '';
 
 function updateBotMessage(text) {
   botMessageText += text;
-  if (!currentBotMessage) {
-    currentBotMessage = addMessage('bot', botMessageText);
-  } else {
-    currentBotMessage.querySelector('.content').textContent = botMessageText;
-  }
+  if (!currentBotMessage) currentBotMessage = addMessage('bot', botMessageText);
+  else currentBotMessage.querySelector('.content').textContent = botMessageText;
   scrollToBottom();
 }
 
 function finalizeBotMessage(text) {
   if (text) {
-    if (currentBotMessage) {
-      currentBotMessage.querySelector('.content').textContent = text;
-    } else {
-      addMessage('bot', text);
-    }
+    if (currentBotMessage) currentBotMessage.querySelector('.content').textContent = text;
+    else addMessage('bot', text);
   }
   currentBotMessage = null;
   botMessageText = '';
@@ -274,7 +225,7 @@ function addMessage(type, content, timestamp) {
   const messages = document.getElementById('messages');
   const el = document.createElement('div');
   el.className = `message ${type}`;
-  
+
   const contentEl = document.createElement('div');
   contentEl.className = 'content';
   contentEl.textContent = content;
@@ -306,8 +257,8 @@ function addTyping() {
 
 function setStatus(text, cls) {
   const el = document.getElementById('connection-status');
-  el.textContent = text;
-  el.className = 'status ' + (cls || '');
+  el.className = 'status-dot ' + (cls || '');
+  el.title = text;
 }
 
 function scrollToBottom() {
@@ -317,19 +268,14 @@ function scrollToBottom() {
 
 function formatTime(ts) {
   if (!ts) return '';
-  const d = new Date(ts);
-  return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  return new Date(ts).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 }
 
 function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
-  // Auto-resize textarea
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   const ta = e.target;
   ta.style.height = 'auto';
-  ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
+  ta.style.height = Math.min(ta.scrollHeight, 128) + 'px';
 }
 
 // --- Export ---
@@ -337,7 +283,7 @@ function exportChat() {
   const exportData = {
     version: '1.0',
     exportedAt: new Date().toISOString(),
-    userId: userId,
+    userId,
     sessionKey: currentSessionKey,
     platform: 'toclaw-webchat',
     messages: messageHistory.map(m => ({
@@ -347,27 +293,15 @@ function exportChat() {
     }))
   };
 
-  // Markdown export
-  let md = `# 小头虾对话记录\n\n`;
-  md += `- 用户: ${userId}\n`;
-  md += `- 导出时间: ${exportData.exportedAt}\n`;
-  md += `- 平台: ToClaw WebChat\n\n---\n\n`;
+  let md = `# 小头虾对话记录\n\n- 用户: ${userId}\n- 导出时间: ${exportData.exportedAt}\n- 平台: ToClaw WebChat\n\n---\n\n`;
   exportData.messages.forEach(m => {
     if (m.role === 'system') return;
-    const role = m.role === 'user' ? '**你**' : '**小头虾**';
-    const time = formatTime(m.timestamp);
-    md += `${role} (${time}):\n${m.content}\n\n`;
+    md += `**${m.role === 'user' ? '你' : '小头虾'}** (${formatTime(m.timestamp)}):\n${m.content}\n\n`;
   });
+  md += `---\n\n## 使用说明\n\n此对话记录可导入其他 AI Agent 继续使用。\n`;
 
-  md += `\n---\n\n`;
-  md += `## 使用说明\n\n`;
-  md += `此对话记录可以导入到其他 AI Agent 中继续使用。\n`;
-  md += `JSON 格式包含完整的结构化数据，Markdown 格式方便阅读。\n`;
-
-  // Download both files
   downloadFile(`toclaw-chat-${userId}-${Date.now()}.json`, JSON.stringify(exportData, null, 2), 'application/json');
   downloadFile(`toclaw-chat-${userId}-${Date.now()}.md`, md, 'text/markdown');
-
   addMessage('system', '📥 对话已导出（JSON + Markdown）');
 }
 
@@ -375,22 +309,14 @@ function downloadFile(filename, content, type) {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
+  a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
 }
 
 // --- Helpers ---
-function genId() {
-  return 'req_' + (++requestId) + '_' + Math.random().toString(36).substr(2, 6);
-}
+function genId() { return 'req_' + (++requestId) + '_' + Math.random().toString(36).substr(2, 6); }
 
 function wsSend(frame, callback) {
-  if (callback && frame.id) {
-    pendingRequests[frame.id] = callback;
-  }
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(frame));
-  }
+  if (callback && frame.id) pendingRequests[frame.id] = callback;
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(frame));
 }
