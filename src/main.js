@@ -1,5 +1,5 @@
 // Config - connect to same origin (Caddy proxies WebSocket to gateway)
-const GATEWAY_URL = (location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host;
+const GATEWAY_URL = 'wss://chat.tito.cafe';
 const GATEWAY_TOKEN = 'e682960566d9436ba84bc65cb158708c561b66f6d52a4c6d9f542ae116ecfc5c'; // Token stays server-side in Caddy config
 
 let ws = null;
