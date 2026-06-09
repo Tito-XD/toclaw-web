@@ -10,6 +10,13 @@ let userId = null;
 let connected = false;
 let messageHistory = [];
 
+// Expose to global scope for HTML onclick handlers
+window.doLogin = doLogin;
+window.doLogout = doLogout;
+window.sendMessage = sendMessage;
+window.exportChat = exportChat;
+window.handleKey = handleKey;
+
 // --- Gate Auth ---
 function doLogin() {
   const password = document.getElementById('gate-password').value;
